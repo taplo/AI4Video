@@ -1,18 +1,23 @@
 ﻿from django.db import models
-from app.utils.Database import g_dbLock
-import json
+from fernet_fields import EncryptedCharField
 
 
-class ThreadSafetyManager(models.Manager):
-    def get_queryset(self):
-        with g_dbLock:
-            ret = super(ThreadSafetyManager, self).get_queryset()
-        return ret
+class BaseModel(models.Model):
+    """Base model — eliminates duplicated save/delete across all models.
+    WAL mode handles concurrency; no lock needed."""
+
+    class Meta:
+        abstract = True
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        super().save(force_insert, force_update, using, update_fields)
+
+    def delete(self, using=None, keep_parents=False):
+        super().delete(using, keep_parents)
 
 
-class StreamModel(models.Model):
+class StreamModel(BaseModel):
     """视频流模型（摄像头管理）"""
-    objects = ThreadSafetyManager()
 
     user_id = models.IntegerField(verbose_name='用户')
     sort = models.IntegerField(verbose_name='排序')
@@ -25,7 +30,7 @@ class StreamModel(models.Model):
     pull_stream_ip = models.CharField(max_length=50, verbose_name='拉流IP')
     pull_stream_port = models.IntegerField(verbose_name='拉流端口')
     pull_stream_username = models.CharField(max_length=50, verbose_name='拉流用户名')
-    pull_stream_password = models.CharField(max_length=50, verbose_name='拉流密码')
+    pull_stream_password = EncryptedCharField(max_length=50, verbose_name='拉流密码')
     nickname = models.CharField(max_length=200, verbose_name='视频流昵称')
     remark = models.CharField(max_length=200, verbose_name='备注')
     forward_state = models.IntegerField(verbose_name='转发状态')  # 0:未转发 1:转发中
@@ -65,25 +70,14 @@ class StreamModel(models.Model):
     def __str__(self):
         return self.nickname
 
-    def delete(self, using=None, keep_parents=False):
-        with g_dbLock:
-            ret = super(StreamModel, self).delete(using, keep_parents)
-        return ret
-
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        with g_dbLock:
-            ret = super(StreamModel, self).save(force_insert, force_update, using, update_fields)
-        return ret
-
     class Meta:
         db_table = 'av_stream'
         verbose_name = '视频流'
         verbose_name_plural = '视频流'
 
 
-class AlgorithmModel(models.Model):
+class AlgorithmModel(BaseModel):
     """算法模型 — 检测算法的元数据与运行时参数（每路摄像头可独立选择）"""
-    objects = ThreadSafetyManager()
 
     ENGINE_YOLO_PYTORCH = 'yolo_pytorch'
     ENGINE_ONNXRUNTIME = 'onnxruntime'
@@ -157,25 +151,14 @@ class AlgorithmModel(models.Model):
     def __str__(self):
         return self.name
 
-    def delete(self, using=None, keep_parents=False):
-        with g_dbLock:
-            ret = super(AlgorithmModel, self).delete(using, keep_parents)
-        return ret
-
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        with g_dbLock:
-            ret = super(AlgorithmModel, self).save(force_insert, force_update, using, update_fields)
-        return ret
-
     class Meta:
         db_table = 'av_algorithm'
         verbose_name = '小模型'
         verbose_name_plural = '小模型'
 
 
-class BizAlgorithmModel(models.Model):
+class BizAlgorithmModel(BaseModel):
     """业务算法 — 小模型/大模型推理 + 后处理业务逻辑（布控绑定此表）"""
-    objects = ThreadSafetyManager()
 
     FLOW_SMALL = 1
     FLOW_LLM = 2
@@ -236,25 +219,14 @@ class BizAlgorithmModel(models.Model):
     def __str__(self):
         return self.name
 
-    def delete(self, using=None, keep_parents=False):
-        with g_dbLock:
-            ret = super(BizAlgorithmModel, self).delete(using, keep_parents)
-        return ret
-
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        with g_dbLock:
-            ret = super(BizAlgorithmModel, self).save(force_insert, force_update, using, update_fields)
-        return ret
-
     class Meta:
         db_table = 'av_biz_algorithm'
         verbose_name = '业务算法'
         verbose_name_plural = '业务算法'
 
 
-class ZoneModel(models.Model):
+class ZoneModel(BaseModel):
     """摄像头区域（多边形）— 跨摄像头追踪/告警规则的区域定义"""
-    objects = ThreadSafetyManager()
 
     stream = models.ForeignKey(StreamModel, on_delete=models.CASCADE, verbose_name='所属摄像头')
     name = models.CharField(max_length=100, verbose_name='区域名称')
@@ -280,25 +252,14 @@ class ZoneModel(models.Model):
     def __str__(self):
         return self.name
 
-    def delete(self, using=None, keep_parents=False):
-        with g_dbLock:
-            ret = super(ZoneModel, self).delete(using, keep_parents)
-        return ret
-
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        with g_dbLock:
-            ret = super(ZoneModel, self).save(force_insert, force_update, using, update_fields)
-        return ret
-
     class Meta:
         db_table = 'av_zone'
         verbose_name = '区域'
         verbose_name_plural = '区域'
 
 
-class AlarmModel(models.Model):
+class AlarmModel(BaseModel):
     """报警记录 — 布控分析触发的报警事件"""
-    objects = ThreadSafetyManager()
 
     EVENT_TYPES = (
         ('entered_zone', '进入区域'),
@@ -318,16 +279,6 @@ class AlarmModel(models.Model):
     def __str__(self):
         return self.event_type
 
-    def delete(self, using=None, keep_parents=False):
-        with g_dbLock:
-            ret = super(AlarmModel, self).delete(using, keep_parents)
-        return ret
-
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        with g_dbLock:
-            ret = super(AlarmModel, self).save(force_insert, force_update, using, update_fields)
-        return ret
-
     class Meta:
         db_table = 'av_alarm'
         verbose_name = '报警'
@@ -338,9 +289,8 @@ class AlarmModel(models.Model):
         ]
 
 
-class RecordingModel(models.Model):
+class RecordingModel(BaseModel):
     """24/7 录像分段索引"""
-    objects = ThreadSafetyManager()
 
     stream = models.ForeignKey(StreamModel, on_delete=models.CASCADE, verbose_name='摄像头')
     file_path = models.CharField(max_length=500, verbose_name='文件路径')
@@ -361,9 +311,8 @@ class RecordingModel(models.Model):
         ]
 
 
-class LLMModel(models.Model):
+class LLMModel(BaseModel):
     """大模型配置（OpenAI 兼容 API）"""
-    objects = ThreadSafetyManager()
 
     user_id = models.IntegerField(verbose_name='用户')
     sort = models.IntegerField(default=0, verbose_name='排序')
@@ -371,7 +320,7 @@ class LLMModel(models.Model):
     name = models.CharField(max_length=50, default='', verbose_name='名称')
     model_name = models.CharField(max_length=200, verbose_name='模型名称')
     api_url = models.CharField(max_length=500, verbose_name='API地址')
-    api_key = models.CharField(max_length=200, default='', verbose_name='API密钥')
+    api_key = EncryptedCharField(max_length=200, default='', verbose_name='API密钥')
     timeout = models.IntegerField(default=30, verbose_name='超时时间(秒)')
     inference_tool = models.CharField(max_length=100, default='OpenAI', verbose_name='推理工具')
     remark = models.TextField(default='', verbose_name='备注')
@@ -379,25 +328,14 @@ class LLMModel(models.Model):
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     last_update_time = models.DateTimeField(auto_now_add=True, verbose_name='更新时间')
 
-    def delete(self, using=None, keep_parents=False):
-        with g_dbLock:
-            ret = super(LLMModel, self).delete(using, keep_parents)
-        return ret
-
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        with g_dbLock:
-            ret = super(LLMModel, self).save(force_insert, force_update, using, update_fields)
-        return ret
-
     class Meta:
         db_table = 'av_llm'
         verbose_name = '大模型'
         verbose_name_plural = '大模型'
 
 
-class LogModel(models.Model):
+class LogModel(BaseModel):
     """管理员操作日志"""
-    objects = ThreadSafetyManager()
 
     user_id = models.IntegerField(verbose_name='用户ID')
     log_type = models.IntegerField(verbose_name='日志类型')  # 1:添加 2:编辑 3:删除 10:系统操作 100:系统重置
@@ -410,16 +348,6 @@ class LogModel(models.Model):
 
     def __str__(self):
         return self.content
-
-    def delete(self, using=None, keep_parents=False):
-        with g_dbLock:
-            ret = super(LogModel, self).delete(using, keep_parents)
-        return ret
-
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        with g_dbLock:
-            ret = super(LogModel, self).save(force_insert, force_update, using, update_fields)
-        return ret
 
     class Meta:
         db_table = 'av_log'
