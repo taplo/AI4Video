@@ -1,0 +1,103 @@
+{
+  "lang_default": "zh",
+  "languages": {
+    "zh": {
+      "code": "zh",
+      "name": "简体中文",
+      "filename": "language-zh.json",
+      "oem": {
+        "name": "AI4Video",
+        "welcome": "欢迎",
+        "logo_url": "/static/images/logo.png?v=20260620f",
+        "bottom_name": "AI4Video",
+        "is_show_author": false,
+        "author": "",
+        "author_link": ""
+      }
+    },
+    "zh-hk": {
+      "code": "zh-hk",
+      "name": "繁體中文",
+      "filename": "language-zh-hk.json",
+      "oem": {
+        "name": "AI4Video",
+        "welcome": "歡迎",
+        "logo_url": "/static/images/logo.png",
+        "bottom_name": "AI4Video",
+        "is_show_author": false,
+        "author": "",
+        "author_link": ""
+      }
+    },
+    "en": {
+      "code": "en",
+      "name": "English",
+      "filename": "language-en.json",
+      "oem": {
+        "name": "AI4Video",
+        "welcome": "Welcome",
+        "logo_url": "/static/images/logo.png",
+        "bottom_name": "AI4Video",
+        "is_show_author": false,
+        "author": "",
+        "author_link": ""
+      }
+    },
+    "es": {
+      "code": "es",
+      "name": "Español",
+      "filename": "language-es.json",
+      "oem": {
+        "name": "AI4Video",
+        "welcome": "Bienvenido",
+        "logo_url": "/static/images/logo.png",
+        "bottom_name": "AI4Video",
+        "is_show_author": false,
+        "author": "",
+        "author_link": ""
+      }
+    },
+    "ru": {
+      "code": "ru",
+      "name": "Русский",
+      "filename": "language-ru.json",
+      "oem": {
+        "name": "AI4Video",
+        "welcome": "Добро пожаловать",
+        "logo_url": "/static/images/logo.png",
+        "bottom_name": "AI4Video",
+        "is_show_author": false,
+        "author": "",
+        "author_link": ""
+      }
+    },
+    "ko": {
+      "code": "ko",
+      "name": "한국어",
+      "filename": "language-ko.json",
+      "oem": {
+        "name": "AI4Video",
+        "welcome": "환영합니다",
+        "logo_url": "/static/images/logo.png",
+        "bottom_name": "AI4Video",
+        "is_show_author": false,
+        "author": "",
+        "author_link": ""
+      }
+    },
+    "vi": {
+      "code": "vi",
+      "name": "Tiếng Việt",
+      "filename": "language-vi.json",
+      "oem": {
+        "name": "AI4Video",
+        "welcome": "Chào mừng",
+        "logo_url": "/static/images/logo.png",
+        "bottom_name": "AI4Video",
+        "is_show_author": false,
+        "author": "",
+        "author_link": ""
+      }
+    }
+  }
+}
