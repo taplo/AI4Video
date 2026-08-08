@@ -2,12 +2,6 @@
 
 多路视频接入与智能布控分析平台。支持 GB28181 / RTSP、YOLO 小模型检测、OpenAI 兼容大模型复核、多边形布控与结构化报警。
 
-| 链接 | |
-|------|--|
-| 官网 | https://www.yuturuishi.com |
-| Gitee | https://gitee.com/Vanishi/rebucca |
-| GitHub | https://github.com/beixiaocai/rebucca |
-
 **开源协议：** MIT License，可自由商用。详见 `LICENSE`。
 
 ---
