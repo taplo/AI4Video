@@ -25,10 +25,13 @@ class AppConfig(AppConfig):
             if connection.vendor != 'sqlite':
                 return
             with connection.cursor() as cur:
-                cur.execute('PRAGMA journal_mode=DELETE;')
+                cur.execute('PRAGMA journal_mode=WAL;')
+                cur.execute('PRAGMA synchronous=NORMAL;')
+                cur.execute('PRAGMA foreign_keys=ON;')
                 cur.execute('PRAGMA busy_timeout=5000;')
-                cur.execute('PRAGMA cache_size=-65536;')
                 cur.execute('PRAGMA temp_store=MEMORY;')
+                cur.execute('PRAGMA mmap_size=134217728;')  # 128MB mmap
+                cur.execute('PRAGMA cache_size=-2000;')  # 2MB page cache
 
         connection_created.connect(_setup_sqlite_pragma)
 

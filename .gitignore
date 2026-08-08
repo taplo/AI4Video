@@ -41,3 +41,6 @@ app/recording/__pycache__/*
 # logs / docs / external services
 docs/*
 log/*
+
+# Environment variables
+.env
