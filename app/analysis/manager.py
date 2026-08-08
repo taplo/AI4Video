@@ -1,18 +1,19 @@
 ﻿"""全局分析管理器（单例）
 
-阶段2：每路摄像头在独立子进程中运行 CameraPipeline；YOLO 推理可选走
+阶段3：每路摄像头在独立线程池中运行 CameraPipeline；YOLO 推理可选走
 主进程 InferenceProcessPool（共享 GPU/模型内存）。事件经 Queue → EventBridge 写库。
 """
+import concurrent.futures
 import json
 import logging
-import multiprocessing as mp
+import signal
+import sys
 import threading
 import time
 
 from app.analysis.pipeline import CameraPipeline
 from app.analysis.motion import MotionDetector
 from app.analysis.worker_pool import DetectorWorkerPool
-from app.analysis.process_worker import pipeline_process_main, PipelineProcessHandle
 from app.analysis.event_bridge import get_event_bridge
 
 logger = logging.getLogger("analysis.manager")
@@ -105,26 +106,17 @@ class AnalysisManager(object):
         self._pipelines = {}      # stream_id -> handle dict
         self._lock = threading.RLock()
         self._worker_pool = DetectorWorkerPool()
-        self._mp_ctx = mp.get_context("spawn")
-        self._status_manager = self._mp_ctx.Manager()
-        self._status_dict = self._status_manager.dict()
-        self._infer_req_q = self._mp_ctx.Queue(maxsize=128)
-        self._infer_resp_q = self._mp_ctx.Queue(maxsize=128)
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=8, thread_name_prefix="pipeline")
+        self._shutdown_event = threading.Event()
+        self._infer_req_q = None  # Will be set if shared inference is enabled
+        self._infer_resp_q = None  # Will be set if shared inference is enabled
         self._infer_forwarder_running = True
-        self._infer_forwarder = threading.Thread(
-            target=self._inference_forwarder_loop, name="infer-forwarder", daemon=True)
-        self._infer_forwarder.start()
         self._disabled_algos = set()  # 禁用实例化的业务算法 ID 集合（内存，重启丢失）
         get_event_bridge()
         self._configure_from_settings()
-
-    def _use_multiprocess(self):
-        try:
-            from app.utils.GlobalUtils import g_config
-            mode = int(getattr(g_config, "analysisProcessMode", 1))
-            return mode >= 1
-        except Exception:
-            return True
+        self._setup_signal_handlers()
+        self._health_thread = threading.Thread(target=self._health_check_loop, name="health-check", daemon=True)
+        self._health_thread.start()
 
     def _use_shared_inference(self):
         try:
@@ -247,40 +239,6 @@ class AnalysisManager(object):
             return True, "推理池已重启，所有引擎缓存已清除"
         except Exception as e:
             return False, str(e)
-
-    def _inference_forwarder_loop(self):
-        from app.analysis.inference_pool import get_inference_pool
-        import queue as _q
-        pool = get_inference_pool()
-        while self._infer_forwarder_running:
-            try:
-                msg = self._infer_req_q.get(timeout=0.5)
-            except _q.Empty:
-                continue
-            if msg is None:
-                break
-            req_id = msg.get("req_id")
-            try:
-                jpeg = msg.get("jpeg")
-                algo = msg.get("algorithm") or {}
-                # 禁用实例化的算法直接返回空结果，跳过推理
-                algo_id = algo.get("id", 0)
-                try:
-                    if algo_id and int(algo_id) in self._disabled_algos:
-                        self._infer_resp_q.put({"req_id": req_id, "ok": True, "detections": []})
-                        continue
-                except Exception:
-                    pass
-                # 直接透传 JPEG bytes 给推理池，避免主进程 imdecode + imencode 双重编解码，
-                # 消除主进程 GIL 占用（解码在 worker 子进程内完成）。
-                dets = pool.detect_jpeg(jpeg, algo, timeout=30.0)
-                self._infer_resp_q.put({"req_id": req_id, "ok": True, "detections": dets})
-            except Exception as e:
-                logger.warning("推理转发失败: %s", e)
-                try:
-                    self._infer_resp_q.put({"req_id": req_id, "ok": False, "error": str(e)})
-                except Exception:
-                    pass
 
     def _configure_from_settings(self):
         try:
@@ -522,41 +480,34 @@ class AnalysisManager(object):
             static_dir=static_dir,
         )
         pipeline._algorithm_name = ", ".join(algo_names) if algo_names else "motion-only"
-        t = threading.Thread(target=pipeline.run, name="pipeline-%s" % sid, daemon=True)
+        future = self._executor.submit(pipeline.run)
         self._pipelines[sid] = {
             "pipeline": pipeline,
-            "thread": t,
+            "future": future,
             "running": True,
             "mode": "thread",
             "algorithm_ids": sorted([a.id for a in algos]),
         }
-        t.start()
         return True, "started (thread)"
 
     def start(self, stream):
+        if self._shutdown_event.is_set():
+            return False, "shutting down"
         sid = stream.id
         with self._lock:
             item = self._pipelines.get(sid)
             if item and item.get("running"):
                 alive = True
-                if item.get("mode") == "process":
-                    proc = item.get("process")
-                    alive = proc is not None and proc.is_alive()
-                else:
-                    th = item.get("thread")
-                    alive = th is not None and th.is_alive()
+                if item.get("mode") == "thread":
+                    future = item.get("future")
+                    alive = future is not None and not future.done()
                 if alive:
                     return True, "already running"
-                # 僵尸条目：进程/线程已退出但未清理
+                # 僵尸条目：线程已退出但未清理
                 try:
-                    if item.get("mode") == "process":
-                        eq = item.get("event_queue")
-                        if eq:
-                            get_event_bridge().unregister_queue(eq)
-                    else:
-                        pipe = item.get("pipeline")
-                        if pipe:
-                            pipe.stop()
+                    pipe = item.get("pipeline")
+                    if pipe:
+                        pipe.stop()
                 except Exception:
                     pass
                 self._pipelines.pop(sid, None)
@@ -565,10 +516,7 @@ class AnalysisManager(object):
                 return False, "no rtsp url"
             algos = self._resolve_algorithms_for_stream(stream)
             zones = self._load_zones(sid)
-            if self._use_multiprocess():
-                ok, msg = self._start_process(stream, url, zones, algos)
-            else:
-                ok, msg = self._start_thread(stream, url, zones, algos)
+            ok, msg = self._start_thread(stream, url, zones, algos)
             if ok:
                 time.sleep(0.35)
                 if not self.is_running(sid):
@@ -581,16 +529,12 @@ class AnalysisManager(object):
             item = self._pipelines.get(stream_id)
             if not item:
                 return False, "not running"
-            if item.get("mode") == "process":
-                handle = item.get("handle")
-                if handle:
-                    handle.stop()
-                eq = item.get("event_queue")
-                if eq:
-                    get_event_bridge().unregister_queue(eq)
-            else:
-                item["pipeline"].stop()
-                item["thread"].join(timeout=3)
+            pipe = item.get("pipeline")
+            if pipe:
+                pipe.stop()
+            future = item.get("future")
+            if future:
+                future.cancel()
             item["running"] = False
             self._pipelines.pop(stream_id, None)
             return True, "stopped"
@@ -603,39 +547,33 @@ class AnalysisManager(object):
     def _is_pipeline_alive(self, item):
         if not item or not item.get("running"):
             return False
-        if item.get("mode") == "process":
-            proc = item.get("process")
-            return proc is not None and proc.is_alive()
-        th = item.get("thread")
-        if th is not None and not th.is_alive():
-            return False
-        pipe = item.get("pipeline")
-        if pipe is not None and not getattr(pipe, "_running", False):
-            return False
-        return True
+        if item.get("mode") == "thread":
+            future = item.get("future")
+            if future is not None and future.done():
+                return False
+            pipe = item.get("pipeline")
+            if pipe is not None and not getattr(pipe, "_running", False):
+                return False
+            return True
+        return False
 
     def _purge_pipeline(self, stream_id):
         item = self._pipelines.pop(stream_id, None)
         if not item:
             return
         try:
-            if item.get("mode") == "process":
-                eq = item.get("event_queue")
-                if eq:
-                    get_event_bridge().unregister_queue(eq)
-                handle = item.get("handle")
-                if handle:
-                    try:
-                        handle.stop(timeout=1)
-                    except Exception:
-                        pass
-            else:
-                pipe = item.get("pipeline")
-                if pipe:
-                    try:
-                        pipe.stop()
-                    except Exception:
-                        pass
+            pipe = item.get("pipeline")
+            if pipe:
+                try:
+                    pipe.stop()
+                except Exception:
+                    pass
+            future = item.get("future")
+            if future:
+                try:
+                    future.cancel()
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -680,20 +618,6 @@ class AnalysisManager(object):
             item = self._pipelines.get(stream_id)
             if not item:
                 return None
-            if item.get("mode") == "process":
-                handle = item.get("handle")
-                if handle:
-                    st = handle.status()
-                    if st:
-                        return self._enrich_pipeline_status(stream_id, st)
-                alive = self.is_running(stream_id)
-                return self._enrich_pipeline_status(stream_id, {
-                    "stream_id": stream_id,
-                    "running": alive,
-                    "stream_health": "connecting" if alive else "stopped",
-                    "analysis_fps": 0.0,
-                    "stalled_sec": 0,
-                })
             pipe = item.get("pipeline")
             if not pipe:
                 return None
@@ -718,26 +642,6 @@ class AnalysisManager(object):
             analyze_fps = self._compute_analyze_fps(stream_id, fallback=self._target_fps)
             new_small_ids = sorted({sid for z in zones for sid in z.get("small_model_ids", []) if sid})
             cur_algo_ids = sorted(item.get("algorithm_ids") or [])
-            if item.get("mode") == "process":
-                if new_small_ids != cur_algo_ids:
-                    handle = item.get("handle")
-                    if handle:
-                        handle.stop()
-                    eq = item.get("event_queue")
-                    if eq:
-                        get_event_bridge().unregister_queue(eq)
-                    self._pipelines.pop(stream_id, None)
-                    try:
-                        from app.models import StreamModel as _SM
-                        s = _SM.objects.get(id=stream_id)
-                        self.start(s)
-                    except Exception as e:
-                        logger.warning("reload_zones 重启失败 stream=%s: %s" % (stream_id, str(e)))
-                else:
-                    handle = item.get("handle")
-                    if handle:
-                        handle.reload_zones(zones, analyze_fps=analyze_fps)
-                return True
             pipe = item.get("pipeline")
             if not pipe:
                 return False
@@ -750,10 +654,12 @@ class AnalysisManager(object):
             if new_small_ids != cur_algo_ids:
                 pipe.stop()
                 item["running"] = False
-                try:
-                    item["thread"].join(timeout=3)
-                except Exception:
-                    pass
+                future = item.get("future")
+                if future:
+                    try:
+                        future.cancel()
+                    except Exception:
+                        pass
                 self._pipelines.pop(stream_id, None)
                 try:
                     from app.models import StreamModel as _SM
@@ -784,3 +690,46 @@ class AnalysisManager(object):
         if t in ("entered_zone", "left_zone", "object_start"):
             return 2
         return 3
+
+    def _setup_signal_handlers(self):
+        def handler(signum, frame):
+            logger.info("收到信号 %d，开始优雅关闭...", signum)
+            self.shutdown(timeout=30)
+        signal.signal(signal.SIGINT, handler)
+        signal.signal(signal.SIGTERM, handler)
+
+    def shutdown(self, timeout=30):
+        logger.info("开始优雅关闭 AnalysisManager...")
+        self._shutdown_event.set()
+        self._executor.shutdown(wait=False, cancel_futures=True)
+        futures = []
+        with self._lock:
+            for sid, item in list(self._pipelines.items()):
+                future = item.get("future")
+                if future:
+                    futures.append(future)
+        try:
+            for future in concurrent.futures.as_completed(futures, timeout=timeout):
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.warning("关闭 pipeline 时出错: %s", e)
+        except concurrent.futures.TimeoutError:
+            logger.warning("关闭超时，强制终止剩余 pipeline")
+        logger.info("AnalysisManager 已关闭")
+
+    def _health_check_loop(self):
+        while not self._shutdown_event.is_set():
+            try:
+                with self._lock:
+                    for sid, item in list(self._pipelines.items()):
+                        if item.get("mode") == "thread":
+                            future = item.get("future")
+                            if future and future.done():
+                                try:
+                                    future.result()
+                                except Exception as e:
+                                    logger.warning("Pipeline %s 异常退出: %s", sid, e)
+            except Exception as e:
+                logger.warning("健康检查出错: %s", e)
+            self._shutdown_event.wait(timeout=30)
