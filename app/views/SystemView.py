@@ -283,7 +283,8 @@ def api_openExportLogs(request):
                 for k, v in run_info.items():
                     online_f.write("%s=%s\n" % (str(k), str(v)))
 
-                online_f.write("av_log=%s\n" % str(g_database.select("select * from av_log order by id desc limit 100")))
+                log_data = list(LogModel.objects.order_by('-id')[:100].values())
+                online_f.write("av_log=%s\n" % str(log_data))
                 online_f.write("run_errors=%s\n" % str(run_errors))
                 online_f.close()
 

@@ -116,16 +116,8 @@ def api_openIndex(request):
                 page_size = 10
 
             skip = (page - 1) * page_size
-            sql_data = "select * from auth_user order by id desc limit %d,%d " % (skip, page_size)
-            sql_data_num = "select count(id) as count from auth_user "
-
-            count = g_database.select(sql_data_num)
-
-            if len(count) > 0:
-                count = int(count[0]["count"])
-                data = g_database.select(sql_data)
-            else:
-                count = 0
+            count = User.objects.count()
+            data = list(User.objects.order_by('-id').values()[skip:skip+page_size])
 
             # 格式化日期字段
             for d in data:
@@ -281,10 +273,7 @@ def api_openEdit(request):
                         pass
                         # 用户名未做修改
                     else:
-                        filter_username = g_database.select(
-                            "select count(1) as count from auth_user where id!=%d and username='%s'" % (
-                                user_id, username))
-                        filter_username_count = int(filter_username[0]["count"])
+                        filter_username_count = User.objects.filter(username=username).exclude(id=user_id).count()
                         if filter_username_count > 0:
                             raise Exception(LANG_VIEWS_T(request, "user_new_username_exists"))
                         user.username = username  # 修改了用户名

@@ -129,5 +129,5 @@ def f_responseJson(res):
     return HttpResponse(json.dumps(res, default=json_dumps_default), content_type="application/json")
 
 def f_dbReadStreamData():
-    data = g_database.select("select * from av_stream order by id desc")
+    data = StreamModel.objects.order_by('-id').values()
     return data

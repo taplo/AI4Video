@@ -1,6 +1,7 @@
 ﻿import json
 from app.views.ViewsBase import *
 from app.models import *
+from django.db.models import Q
 from django.shortcuts import render, redirect
 from app.utils.Utils import buildPageLabels, group_by_field, GB28181CodeUtils
 from app.utils.UploadUtils import UploadUtils
@@ -31,7 +32,7 @@ def api_openAddContext(request):
 
             pull_stream_username = ""
             pull_stream_password = ""
-            stream = g_database.select("select id,pull_stream_username,pull_stream_password from av_stream where pull_stream_type=1 order by id desc limit 1")
+            stream = list(StreamModel.objects.filter(pull_stream_type=1).order_by('-id').values('id', 'pull_stream_username', 'pull_stream_password')[:1])
             if len(stream) > 0:
                 pull_stream_username = stream[0]["pull_stream_username"]
                 pull_stream_password = stream[0]["pull_stream_password"]
@@ -209,10 +210,9 @@ def api_openEditContext(request):
 
             stream_code = params.get("code", "").strip()
 
-            stream = g_database.select("select * from av_stream where code='%s' limit 1" % stream_code)
-            if len(stream) > 0:
-                stream_info = stream[0]
-                camera_device_id = stream_info["camera_device_id"]
+            stream_info = StreamModel.objects.filter(code=stream_code).values().first()
+            if stream_info:
+                camera_device_id = stream_info.get("camera_device_id")
                 if camera_device_id is None or camera_device_id == "":
                     stream_info["camera_device_id"] = stream_code
 
@@ -250,9 +250,8 @@ def api_openStreamByAppAndName(request):
             name = params.get("name", "").strip()
 
             if app and name:
-                streams = g_database.select("select * from av_stream where app='%s' and name='%s' limit 1" % (app, name))
-                if len(streams) > 0:
-                    data = streams[0]
+                data = StreamModel.objects.filter(app=app, name=name).values().first()
+                if data:
                     ret = True
                     msg = LANG_VIEWS_T(request, "msg_success")
                 else:
@@ -523,7 +522,7 @@ def api_openIndex(request):
             medias = g_zlm.getMediaList()
             if len(medias) == 0:
                 # 流媒体服务不在线，全部更新下线状态
-                g_database.execute("update av_stream set forward_state=0")
+                StreamModel.objects.update(forward_state=0)
             else:
                 media_dict = {}
                 for m in medias:
@@ -537,10 +536,10 @@ def api_openIndex(request):
 
                     if media_dict.get(app_name):
                         if d_forward_state != 1:
-                            g_database.execute("update av_stream set forward_state=1 where id=%d" % d_id)
+                            StreamModel.objects.filter(id=d_id).update(forward_state=1)
                     else:
                         if d_forward_state != 0:
-                            g_database.execute("update av_stream set forward_state=0 where id=%d" % d_id)
+                            StreamModel.objects.filter(id=d_id).update(forward_state=0)
             # 同步数据库和在线流状态 end
 
             page = params.get('p', 1)
@@ -561,23 +560,15 @@ def api_openIndex(request):
                 page_size = 10
 
             # 构建查询条件
-            conditions = []
+            queryset = StreamModel.objects.all().order_by('-id')
             if search_text:
-                conditions.append("nickname like '%{search_text}%' or code = '{search_text}' ".format(search_text=search_text))
-            
+                queryset = queryset.filter(Q(nickname__icontains=search_text) | Q(code=search_text))
             if search_status != -1:
-                conditions.append("forward_state = {status}".format(status=search_status))
-            
-            # 拼接SQL
-            if len(conditions) > 0:
-                where_condition = " where " + " and ".join(conditions)
-                sql = "select * from av_stream {where_condition} order by id desc".format(where_condition=where_condition)
-            else:
-                sql = "select * from av_stream order by id desc"
+                queryset = queryset.filter(forward_state=search_status)
             
             skip = (page - 1) * page_size
 
-            data = g_database.select(sql)
+            data = list(queryset.values())
             rec_ids = set()
             try:
                 from app.recording.manager import get_recording_manager
@@ -1080,7 +1071,7 @@ def api_openGetAllStreamData(request):
             medias = g_zlm.getMediaList(request_ip=request_ip)
 
             # 构建 app_name -> 摄像头信息 映射（从数据库）
-            db_streams = g_database.select("select id,app,name,code,nickname from av_stream")
+            db_streams = StreamModel.objects.values('id', 'app', 'name', 'code', 'nickname')
             db_dict = {}
             for s in db_streams:
                 key = "{app}_{name}".format(app=s["app"], name=s["name"])
@@ -1133,7 +1124,7 @@ def api_openGetStatisticsStream(request):
             g_logger.info("StreamView.openGetStatisticsStream() request_ip:%s" % request_ip)
             try:
                 # 接入数量 = 数据库中摄像头总数
-                db_rows = g_database.select("select app,name from av_stream")
+                db_rows = StreamModel.objects.values('app', 'name')
                 info["count"] = len(db_rows)
 
                 # 在线数量 = ZLM 中实际存在的流数量

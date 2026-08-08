@@ -29,12 +29,10 @@ def index(request):
         page_size = 10
 
     skip = (page - 1) * page_size
-    count_row = g_database.select("select count(id) as count from av_llm")
-    count = int(count_row[0]["count"]) if count_row else 0
+    count = LLMModel.objects.count()
     data = []
     if count > 0:
-        data = g_database.select(
-            "select * from av_llm order by id desc limit %d,%d" % (skip, page_size))
+        data = list(LLMModel.objects.order_by('-id').values()[skip:skip+page_size])
         for d in data:
             if d.get("last_update_time"):
                 d["last_update_time"] = d["last_update_time"].strftime("%Y/%m/%d %H:%M")

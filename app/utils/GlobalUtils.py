@@ -147,7 +147,7 @@ class GlobalUtils(object):
         online_stream_dict = {}
 
         if len(online_streams) == 0:
-            g_database.execute("update av_stream set forward_state=0")
+            StreamModel.objects.update(forward_state=0)
         else:
             for d in online_streams:
                 an = "{app}_{name}".format(app=d["app"], name=d["name"])
@@ -209,7 +209,7 @@ class GlobalUtils(object):
             stream = StreamModel.objects.filter(app=d["app"], name=d["name"]).first()
             if stream:
                 __ret, __msg = GlobalUtils.delStreamProxy(stream, lang=lang)
-        g_database.execute("update av_stream set forward_state=0")
+        StreamModel.objects.update(forward_state=0)
 
 
     @staticmethod
