@@ -14,11 +14,11 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file before any other settings
-load_dotenv(BASE_DIR / '.env')
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file before any other settings
+load_dotenv(BASE_DIR / '.env')
 PROJECT_UA = "AI4Video"
 PROJECT_BUILT = "AI4Video built on 2026/07/07"
 PROJECT_VERSION = "1.002"
@@ -32,10 +32,11 @@ PROJECT_ADMIN_START_TIMESTAMP = int(time.time()) # 软件启动时间戳（秒�
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'ai4video-dev-insecure-key-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# 本项目固定使用 Debug 模式：由 Django 内置 staticfiles 提供静态资源，不依赖 WhiteNoise
-DEBUG = True
+# DEBUG defaults to False; set DJANGO_DEBUG=true in .env to enable
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ["*"]
+# ALLOWED_HOSTS defaults to localhost; set comma-separated list in .env for production
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
 # Application definition
 
@@ -144,9 +145,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 防止暴力破解
 SESSION_COOKIE_AGE=7*24*60*60   # session过期，单位（秒） 7天=7*24*60*60，1小时=1*60*60
 
-# 允许iframe嵌入
-X_FRAME_OPTIONS = 'ALLOWALL'  # 允许所有网站通过iframe嵌入
-# X_FRAME_OPTIONS = 'SAMEORIGIN'  # 只允许同源网站嵌入
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_HTTPONLY = True
 
 # 允许大JSON请求体（集群平台通过WebSocket传递base64文件，模型文件最大1000M）
 DATA_UPLOAD_MAX_MEMORY_SIZE = 1610612736  # 1.5GB

@@ -34,6 +34,9 @@ def api_openDownload(request):
     g_logger.info("StorageView.openDownload() params:%s" % str(params))
 
     filename = params.get("filename", "").strip()
+    filename = os.path.basename(filename)
+    if not filename or filename != params.get("filename", "").strip():
+        return f_responseJson({"code": 0, "msg": "Invalid filename"})
     try:
         # 仅允许指定后缀的文件下载，避免任意文件读取
         if filename.endswith(".mp4") \

@@ -35,7 +35,7 @@ class SimpleMiddleware(MiddlewareMixin):
             return None
 
         # 未登录：open API 须带 Safe 头（config.json safe 字段）
-        if '/open' in path:
+        if path.startswith('/open'):
             headers = request.headers
             safe = headers.get("Safe") or request.META.get("HTTP_SAFE")
             try:

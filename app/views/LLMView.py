@@ -1,7 +1,6 @@
 ﻿from datetime import datetime
 
 from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
 
 from app.views.ViewsBase import *
 from app.models import LLMModel
@@ -255,7 +254,6 @@ def api_openDel(request):
     return f_responseJson({"code": 1000 if ret else 0, "msg": msg})
 
 
-@csrf_exempt
 def api_openTest(request):
     try:
         if request.method != "POST":
