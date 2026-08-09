@@ -133,6 +133,13 @@ AI4Video 是一个基于 Django 的视频分析平台，集成 ONNX/YOLO 推理�
 
 **Dependencies:** Phase 03
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — 依赖升级、自动迁移、AuditLog 模型
+- [ ] 06-02-PLAN.md — 限流中间件、审计中间件、OpenAPI、静态压缩
+- [ ] 06-03-PLAN.md — 集成测试、全量回归验证
+
 **Status:** ○ pending
 
 ---
