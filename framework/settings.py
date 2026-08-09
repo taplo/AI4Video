@@ -29,7 +29,23 @@ PROJECT_ADMIN_START_TIMESTAMP = int(time.time()) # 软件启动时间戳（秒�
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'ai4video-dev-insecure-key-change-in-production')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if DEBUG:
+        # Development only: allow insecure default with warning
+        import warnings
+        warnings.warn(
+            "DJANGO_SECRET_KEY not set. Using insecure default for development only. "
+            "Set DJANGO_SECRET_KEY in .env for production.",
+            UserWarning
+        )
+        SECRET_KEY = 'ai4video-dev-insecure-key-change-in-production'
+    else:
+        # Production: require proper secret key
+        raise ValueError(
+            "DJANGO_SECRET_KEY environment variable is required in production. "
+            "Set it in your .env file or environment."
+        )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG defaults to False; set DJANGO_DEBUG=true in .env to enable
@@ -143,11 +159,11 @@ SESSION_COOKIE_NAME = 'AI4VideoSessionID'
 SESSION_EXPIRE_AT_BROWSER_CLOSE=False #会话cookie可以在用户浏览器中保持有效期  True：关闭浏览器则Cookie失效。
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 防止暴力破解
-SESSION_COOKIE_AGE=7*24*60*60   # session过期，单位（秒） 7天=7*24*60*60，1小时=1*60*60
+SESSION_COOKIE_AGE=2*24*60*60   # session过期，单位（秒）2天=2*24*60*60（reduced from 7 days for security）
 
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = True
 
 # 允许大JSON请求体（集群平台通过WebSocket传递base64文件，模型文件最大1000M）
-DATA_UPLOAD_MAX_MEMORY_SIZE = 1610612736  # 1.5GB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1073741824  # 1GB (reduced from 1.5GB for security)

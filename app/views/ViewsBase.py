@@ -2,6 +2,7 @@
 from app.utils.LanguageUtils import LANG_VIEWS_T, GSettingsLangDefault
 import json
 import time
+import hmac
 from django.http import HttpResponse, JsonResponse
 
 def f_parseGetParams(request):
@@ -24,7 +25,7 @@ def f_parsePostParams(request):
         try:
             params = request.body.decode('utf-8')
             params = json.loads(params)
-        except:
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
             params = {}
 
     return params
@@ -56,18 +57,12 @@ def f_parseRequestLang(request):
     return request_lang
 def f_parseRequestIp(request):
     try:
-        if request.method == 'GET':
-            params = f_parseGetParams(request)
-            ip = params.get('request_ip', '').strip()
-            if ip:
-                return ip
-        elif request.method == 'POST':
-            params = f_parsePostParams(request)
-            ip = params.get('request_ip', '').strip()
-            if ip:
-                return ip
-        host = request.get_host()
-        ip = host.split(':')[0]
+        # Always derive IP from request metadata, never from user-controlled parameters
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0].strip()
+        else:
+            ip = request.META.get('REMOTE_ADDR', '0.0.0.0')
     except Exception as e:
         g_logger.error("f_parseRequestIp() error: %s"%str(e))
         ip = "0.0.0.0"
@@ -98,7 +93,7 @@ def f_sessionReadUser(request):
 def f_sessionReadUserId(request):
     try:
         user_id = f_sessionReadUser(request).get("id")
-    except:
+    except (AttributeError, TypeError):
         user_id = 0
     return user_id
 
@@ -113,7 +108,7 @@ def f_checkRequestSafe(request):
     else:
         headers = request.headers
         Safe = headers.get("Safe")
-        if Safe and Safe == g_config.safe:
+        if Safe and hmac.compare_digest(str(Safe), str(g_config.safe)):
             ret = True
             msg = LANG_VIEWS_T(request, "msg_success")
         else:

@@ -4,8 +4,10 @@ StorageView 文件下载模块
 """
 from app.views.ViewsBase import *
 from app.utils.LanguageUtils import LANG_VIEWS_T
+from app.utils.GlobalUtils import g_config
 from django.utils.encoding import escape_uri_path
 import os
+import time
 
 
 def api_openInfo(request):
@@ -56,9 +58,7 @@ def api_openDownload(request):
                 from django.http import FileResponse
                 f = open(filepath, mode="rb")
                 response = FileResponse(f, content_type="application/octet-stream")
-                response['Access-Control-Allow-Origin'] = "*"
-                response['Access-Control-Allow-Headers'] = "*"
-                response['Access-Control-Allow-Methods'] = "POST, GET, OPTIONS, DELETE"
+                # CORS headers removed - internal download endpoint should not be accessed cross-origin
                 response['Content-Disposition'] = "attachment;filename={};".format(escape_uri_path(filename))
 
                 # 延迟删除：通过 after_response 钩子在响应发送完成后删除

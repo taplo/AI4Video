@@ -24,12 +24,18 @@ class Database(object):
     def __init__(self, logger):
         self.logger = logger
 
-    def select(self, sql):
+    def select(self, sql, params=None):
+        """Execute SELECT query with optional parameterized params.
+        WARNING: Always use params for user-provided values to prevent SQL injection.
+        """
         data = []
 
         def _execute():
             cursor = connection.cursor()
-            cursor.execute(sql)
+            if params:
+                cursor.execute(sql, params)
+            else:
+                cursor.execute(sql)
             rawData = cursor.fetchall()
             col_names = [desc[0] for desc in cursor.description]
             result = []
@@ -47,12 +53,18 @@ class Database(object):
 
         return data
 
-    def execute(self, sql):
+    def execute(self, sql, params=None):
+        """Execute SQL command with optional parameterized params.
+        WARNING: Always use params for user-provided values to prevent SQL injection.
+        """
         ret = False
 
         def _execute():
             cursor = connection.cursor()
-            cursor.execute(sql)
+            if params:
+                cursor.execute(sql, params)
+            else:
+                cursor.execute(sql)
             return True
 
         try:

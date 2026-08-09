@@ -413,47 +413,16 @@ class AnalysisManager(object):
         return None
 
     def _start_process(self, stream, url, zones, algos, detectors_legacy=None):
-        sid = stream.id
-        event_queue = self._mp_ctx.Queue(maxsize=256)
-        cmd_queue = self._mp_ctx.Queue(maxsize=16)
-        bridge = get_event_bridge()
-        bridge.register_queue(event_queue)
-
-        algo_specs = [_algorithm_to_spec(a) for a in algos]
-        analyze_fps = self._compute_analyze_fps(sid, fallback=self._target_fps)
-        storage_alarm_dir, static_dir = _snapshot_storage_paths()
-        config = {
-            "stream_id": sid,
-            "stream_code": getattr(stream, "code", str(sid)),
-            "rtsp_url": url,
-            "target_fps": self._target_fps,
-            "analyze_fps": analyze_fps,
-            "zones": zones,
-            "algorithms": algo_specs,
-            "use_shared_inference": self._use_shared_inference(),
-            "storage_alarm_dir": storage_alarm_dir,
-            "static_dir": static_dir,
-        }
-        proc = self._mp_ctx.Process(
-            target=pipeline_process_main,
-            args=(config, event_queue, cmd_queue, self._status_dict,
-                  self._infer_req_q, self._infer_resp_q),
-            name="pipeline-%s" % sid,
-            daemon=True,
+        """Process-based pipeline mode - NOT IMPLEMENTED.
+        
+        This method is dead code. The codebase uses _start_thread instead.
+        See _start_thread for the active implementation.
+        
+        Raises NotImplementedError if called.
+        """
+        raise NotImplementedError(
+            "_start_process is not implemented. Use _start_thread instead."
         )
-        proc.start()
-        handle = PipelineProcessHandle(sid, proc, event_queue, cmd_queue, self._status_dict)
-        self._pipelines[sid] = {
-            "handle": handle,
-            "process": proc,
-            "event_queue": event_queue,
-            "mode": "process",
-            "running": True,
-            "pipeline": None,
-            "thread": None,
-            "algorithm_ids": sorted([a.id for a in algos]),
-        }
-        return True, "started (process)"
 
     def _start_thread(self, stream, url, zones, algos):
         sid = stream.id
@@ -702,7 +671,9 @@ class AnalysisManager(object):
     def _setup_signal_handlers(self):
         def handler(signum, frame):
             logger.info("收到信号 %d，开始优雅关闭...", signum)
-            self.shutdown(timeout=30)
+            # Set shutdown event instead of calling shutdown() directly
+            # This avoids potential deadlocks in multi-threaded environment
+            self._shutdown_event.set()
         signal.signal(signal.SIGINT, handler)
         signal.signal(signal.SIGTERM, handler)
 

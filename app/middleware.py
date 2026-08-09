@@ -1,4 +1,5 @@
 ﻿from django.http import HttpResponseRedirect
+import hmac
 
 try:
     from django.utils.deprecation import MiddlewareMixin
@@ -30,7 +31,7 @@ class SimpleMiddleware(MiddlewareMixin):
             if path.startswith(prefix):
                 return None
 
-        if request.session.has_key("user"):
+        if "user" in request.session:
             if path.startswith("/login"):
                 return HttpResponseRedirect("/")
             return None
@@ -41,7 +42,7 @@ class SimpleMiddleware(MiddlewareMixin):
             safe = headers.get("Safe") or request.META.get("HTTP_SAFE")
             try:
                 from app.utils.GlobalUtils import g_config
-                if safe and safe == g_config.safe:
+                if safe and hmac.compare_digest(str(safe), str(g_config.safe)):
                     return None
             except Exception:
                 pass

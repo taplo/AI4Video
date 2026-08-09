@@ -1,4 +1,5 @@
 ﻿from datetime import datetime
+import base64
 
 from django.shortcuts import render
 
@@ -6,6 +7,13 @@ from app.views.ViewsBase import *
 from app.models import LLMModel
 from app.utils.Utils import buildPageLabels
 from app.utils.LLMUtils import LLMUtils
+
+
+def _mask_api_key(api_key):
+    """Mask API key, showing only last 4 characters."""
+    if not api_key or len(api_key) <= 4:
+        return "****"
+    return "****" + api_key[-4:]
 
 
 def index(request):
@@ -69,7 +77,7 @@ def api_openIndex(request):
                         'name': d.name,
                         'model_name': d.model_name,
                         'api_url': d.api_url,
-                        'api_key': d.api_key,
+                        'api_key': _mask_api_key(d.api_key),
                         'timeout': d.timeout,
                         'inference_tool': d.inference_tool,
                         'state': d.state,
@@ -210,7 +218,7 @@ def api_openInfo(request):
                             "name": llm.name,
                             "model_name": llm.model_name,
                             "api_url": llm.api_url or "",
-                            "api_key": llm.api_key or "",
+                            "api_key": _mask_api_key(llm.api_key),
                             "timeout": llm.timeout,
                             "inference_tool": llm.inference_tool,
                             "state": llm.state,

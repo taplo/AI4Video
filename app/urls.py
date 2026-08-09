@@ -166,7 +166,7 @@ urlpatterns = [
     path('llm/openEdit', LLMView.api_openEdit),
     path('llm/openInfo', LLMView.api_openInfo),
     path('llm/openDel', LLMView.api_openDel),
-    path('llm/openTest', csrf_exempt(LLMView.api_openTest)),
+    path('llm/openTest', LLMView.api_openTest),
 
     # Health check
     path('api/health', HealthView.health_check),
