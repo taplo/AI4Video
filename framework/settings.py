@@ -63,7 +63,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'app'
+    'django_ratelimit',
+    'rest_framework',
+    'drf_spectacular',
+    'compressor',
+    'app',
 ]
 
 MIDDLEWARE = [
@@ -75,6 +79,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'app.middleware.RateLimitMiddleware',  # 请求限流
+    'app.middleware.AuditMiddleware',  # 审计日志
     "app.middleware.SimpleMiddleware",  # 拦截器
 ]
 
@@ -167,3 +173,35 @@ CSRF_COOKIE_HTTPONLY = True
 
 # 允许大JSON请求体（集群平台通过WebSocket传递base64文件，模型文件最大1000M）
 DATA_UPLOAD_MAX_MEMORY_SIZE = 1073741824  # 1GB (reduced from 1.5GB for security)
+
+# REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# drf-spectacular OpenAPI
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'AI4Video API',
+    'DESCRIPTION': 'AI4Video 视频分析平台 API 文档',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+    },
+}
+
+# django-compressor
+COMPRESS_ENABLED = True
+COMPRESS_CSS_FILTERS = ['compressor.filters.css_default.CssAbsoluteFilter']
+COMPRESS_JS_FILTERS = ['compressor.filters.jsmin.JSMinFilter']
+COMPRESS_OFFLINE = False  # DEBUG mode: compress on-the-fly; set True for production
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+    'compressor.finders.CompressorFinder',
+]
+
+# Security
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
