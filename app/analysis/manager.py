@@ -4,12 +4,16 @@
 主进程 InferenceProcessPool（共享 GPU/模型内存）。事件经 Queue → EventBridge 写库。
 """
 import concurrent.futures
+import gc
 import json
 import logging
+import os
 import signal
 import sys
 import threading
 import time
+
+import psutil
 
 from app.analysis.pipeline import CameraPipeline
 from app.analysis.motion import MotionDetector
@@ -112,11 +116,15 @@ class AnalysisManager(object):
         self._infer_resp_q = None  # Will be set if shared inference is enabled
         self._infer_forwarder_running = True
         self._disabled_algos = set()  # 禁用实例化的业务算法 ID 集合（内存，重启丢失）
+        self._max_memory_mb = 2048
+        self._memory_check_interval = 30
         get_event_bridge()
         self._configure_from_settings()
         self._setup_signal_handlers()
         self._health_thread = threading.Thread(target=self._health_check_loop, name="health-check", daemon=True)
         self._health_thread.start()
+        self._memory_thread = threading.Thread(target=self._memory_monitor_loop, name="memory-monitor", daemon=True)
+        self._memory_thread.start()
 
     def _use_shared_inference(self):
         try:
@@ -697,6 +705,44 @@ class AnalysisManager(object):
             self.shutdown(timeout=30)
         signal.signal(signal.SIGINT, handler)
         signal.signal(signal.SIGTERM, handler)
+
+    def _memory_monitor_loop(self):
+        while not self._shutdown_event.is_set():
+            try:
+                process = psutil.Process(os.getpid())
+                memory_mb = process.memory_info().rss / (1024 * 1024)
+                if memory_mb > self._max_memory_mb:
+                    logger.warning("OOM detected: %.1f MB > %d MB limit", memory_mb, self._max_memory_mb)
+                    self._handle_oom()
+                self._check_worker_health()
+            except Exception as e:
+                logger.warning("Memory monitor error: %s", e)
+            self._shutdown_event.wait(timeout=self._memory_check_interval)
+
+    def _handle_oom(self):
+        logger.warning("OOM detected, restarting workers...")
+        with self._lock:
+            for sid, item in list(self._pipelines.items()):
+                pipe = item.get("pipeline")
+                if pipe:
+                    try:
+                        pipe.stop()
+                    except Exception:
+                        pass
+            self._pipelines.clear()
+        gc.collect()
+        self.restart_inference_pool()
+
+    def _check_worker_health(self):
+        with self._lock:
+            for sid, item in list(self._pipelines.items()):
+                if item.get("mode") == "thread":
+                    future = item.get("future")
+                    if future and future.done():
+                        try:
+                            future.result()
+                        except Exception as e:
+                            logger.warning("Pipeline %s failed: %s", sid, e)
 
     def shutdown(self, timeout=30):
         logger.info("开始优雅关闭 AnalysisManager...")

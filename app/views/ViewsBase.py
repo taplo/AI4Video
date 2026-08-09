@@ -1,7 +1,8 @@
 ﻿from app.utils.GlobalUtils import *
 from app.utils.LanguageUtils import LANG_VIEWS_T, GSettingsLangDefault
 import json
-from django.http import HttpResponse
+import time
+from django.http import HttpResponse, JsonResponse
 
 def f_parseGetParams(request):
     params = {}
@@ -127,6 +128,35 @@ def f_responseJson(res):
             raise TypeError
 
     return HttpResponse(json.dumps(res, default=json_dumps_default), content_type="application/json")
+
+
+ERROR_CODES = {
+    "db_connection_failed": 5031001,
+    "db_operation_failed": 5001002,
+    "auth_required": 4011001,
+    "permission_denied": 4031001,
+    "not_found": 4041001,
+    "invalid_params": 4001001,
+    "oom_detected": 5031002,
+}
+
+
+def f_error_response(code, msg, detail=None, status_code=400):
+    return JsonResponse({
+        "code": code,
+        "msg": msg,
+        "detail": detail,
+        "timestamp": int(time.time()),
+    }, status=status_code)
+
+
+def f_success_response(data=None, msg="ok"):
+    return JsonResponse({
+        "code": 1000,
+        "msg": msg,
+        "data": data,
+        "timestamp": int(time.time()),
+    })
 
 def f_dbReadStreamData():
     data = StreamModel.objects.order_by('-id').values()
