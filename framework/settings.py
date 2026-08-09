@@ -194,6 +194,7 @@ SPECTACULAR_SETTINGS = {
 
 # django-compressor
 COMPRESS_ENABLED = True
+COMPRESS_ROOT = BASE_DIR / 'static'
 COMPRESS_CSS_FILTERS = ['compressor.filters.css_default.CssAbsoluteFilter']
 COMPRESS_JS_FILTERS = ['compressor.filters.jsmin.JSMinFilter']
 COMPRESS_OFFLINE = False  # DEBUG mode: compress on-the-fly; set True for production

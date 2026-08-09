@@ -29,4 +29,12 @@ urlpatterns = [
     re_path(r'^upload/(?P<path>.*)$', serve, {'document_root': os.path.join(settings.BASE_DIR, 'static', 'upload')}),
 ]
 
+# OpenAPI Schema and Swagger UI (DEBUG mode only, per D-17)
+if settings.DEBUG:
+    from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+    urlpatterns += [
+        path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+        path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    ]
+
 urlpatterns += staticfiles_urlpatterns()
