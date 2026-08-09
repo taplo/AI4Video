@@ -71,6 +71,14 @@ class AppConfig(AppConfig):
                 import logging
                 logging.getLogger("app.bootstrap").warning("autoStartMedia: %s", e)
             # 不自动启动布控分析，统一由用户在布控管理页手动点击「启动分析」
+            try:
+                from app.scheduler import setup_scheduler
+                setup_scheduler()
+                import logging
+                logging.getLogger("app.bootstrap").info("Scheduler started for daily backup")
+            except Exception as e:
+                import logging
+                logging.getLogger("app.bootstrap").warning("Scheduler setup failed: %s", e)
         except Exception as e:
             import logging
             logging.getLogger("app.bootstrap").exception("bootstrap: %s", e)

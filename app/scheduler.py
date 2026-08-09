@@ -1,2 +1,20 @@
-﻿# 计划任务功能已移除（AI4Video 不需要此功能）
-# 原功能依赖 ScheduleTaskModel 和 ScheduleTaskLogModel，这两个模型已从 models.py 中移除
+﻿import logging
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+
+logger = logging.getLogger("app.scheduler")
+
+scheduler = BackgroundScheduler()
+
+
+def setup_scheduler():
+    from app.backup import backup_database
+    scheduler.add_job(
+        backup_database,
+        CronTrigger(hour=2, minute=0),
+        id='daily_backup',
+        name='Daily database backup',
+        replace_existing=True
+    )
+    scheduler.start()
+    logger.info("Scheduler started with daily backup job")

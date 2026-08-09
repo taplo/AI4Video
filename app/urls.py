@@ -14,6 +14,7 @@ from .views import SmallModelView
 from .views import LLMView
 from .views import AlarmView
 from .views import ControlView
+from .views import HealthView
 
 app_name = 'app'
 
@@ -166,4 +167,7 @@ urlpatterns = [
     path('llm/openInfo', LLMView.api_openInfo),
     path('llm/openDel', LLMView.api_openDel),
     path('llm/openTest', csrf_exempt(LLMView.api_openTest)),
+
+    # Health check
+    path('api/health', HealthView.health_check),
 ]
