@@ -16,6 +16,15 @@ def main():
             "available on your PYTHONPATH environment variable? Did you "
             "forget to activate a virtual environment?"
         ) from exc
+
+    # Auto-migrate on runserver/runworker (D-19, D-20)
+    if len(sys.argv) > 1 and sys.argv[1] in ('runserver', 'runworker'):
+        try:
+            from django.core.management import call_command
+            call_command('migrate', '--run-syncdb', verbosity=0)
+        except Exception as e:
+            print(f"Auto-migrate failed: {e}")
+
     execute_from_command_line(sys.argv)
 
 
