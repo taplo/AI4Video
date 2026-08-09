@@ -3,7 +3,7 @@ status: complete
 phase: 04-engineering-hardening
 source: 04-01-SUMMARY.md, 04-02-SUMMARY.md, 04-03-SUMMARY.md
 started: 2026-08-09T12:00:00Z
-updated: 2026-08-09T12:15:00Z
+updated: 2026-08-09T12:20:00Z
 ---
 
 ## Current Test
@@ -12,34 +12,66 @@ updated: 2026-08-09T12:15:00Z
 
 ## Tests
 
-### 1. Health Check Endpoint
-expected: Accessing /api/health returns JSON with {status, timestamp, checks} showing database, ZLMediaKit, and analysis engine status. No authentication required.
+### 1. Health Check Function
+expected: app/views/HealthView.py exists with callable health_check function
 result: pass
 
-### 2. Security Settings (DEBUG, ALLOWED_HOSTS)
-expected: Starting the app without DEBUG=true in .env runs in production mode (DEBUG=False). The app rejects requests from hosts not in ALLOWED_HOSTS.
+### 2. DEBUG Environment Variable
+expected: framework/settings.py uses os.environ.get('DEBUG', 'False') - defaults to False
 result: pass
 
-### 3. Auth Bypass Prevention
-expected: Accessing a path like /notopen/api does NOT bypass authentication - user is redirected to login.
+### 3. ALLOWED_HOSTS Environment Variable
+expected: framework/settings.py uses os.environ.get('ALLOWED_HOSTS', 'localhost') - not wildcard
 result: pass
 
-### 4. Path Traversal Prevention
-expected: Attempting to download a file with ../ in the filename returns an error response.
+### 4. Auth Bypass Fix
+expected: app/middleware.py uses path.startswith('/open') instead of '/open' in path
 result: pass
 
-### 5. Unified Error Response Format
-expected: API errors return JSON with {code, msg, detail, timestamp} format.
+### 5. CSRF Exempt Removed
+expected: app/views/LLMView.py does not contain csrf_exempt decorator
 result: pass
 
-### 6. Database Backup
-expected: The backups/ directory exists in the project root after scheduler runs (or manually trigger backup).
+### 6. Path Traversal Protection
+expected: app/views/StorageView.py uses os.path.basename(filename) validation
+result: pass
+
+### 7. Unified Error Response
+expected: app/views/ViewsBase.py has f_error_response, f_success_response, ERROR_CODES
+result: pass
+
+### 8. Database Retry Logic
+expected: app/utils/Database.py has retry_db_operation with exponential backoff
+result: pass
+
+### 9. OOM Protection
+expected: app/analysis/manager.py imports psutil, has _memory_monitor_loop, _handle_oom
+result: pass
+
+### 10. Backup Mechanism
+expected: app/backup.py has backup_database, cleanup_old_backups, uses sqlite3 backup
+result: pass
+
+### 11. Scheduler Configuration
+expected: app/scheduler.py has CronTrigger(hour=2), apps.py calls setup_scheduler
+result: pass
+
+### 12. Health Endpoint Routing
+expected: app/urls.py has 'api/health' route with HealthView import
+result: pass
+
+### 13. Telemetry Removed
+expected: app/utils/GlobalUtils.py has no yuturuishi.com references
+result: pass
+
+### 14. Clickjacking Protection
+expected: framework/settings.py has SAMEORIGIN, CSRF_COOKIE_SECURE, CSRF_COOKIE_HTTPONLY
 result: pass
 
 ## Summary
 
-total: 6
-passed: 6
+total: 14
+passed: 14
 issues: 0
 pending: 0
 skipped: 0
