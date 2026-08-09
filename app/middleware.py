@@ -42,7 +42,8 @@ class SimpleMiddleware(MiddlewareMixin):
             safe = headers.get("Safe") or request.META.get("HTTP_SAFE")
             try:
                 from app.utils.GlobalUtils import g_config
-                if safe and hmac.compare_digest(str(safe), str(g_config.safe)):
+                safe_secret = getattr(g_config, "safe", None)
+                if safe and safe_secret and hmac.compare_digest(str(safe), str(safe_secret)):
                     return None
             except Exception:
                 pass

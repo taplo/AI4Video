@@ -32,24 +32,28 @@ class Database(object):
 
         def _execute():
             cursor = connection.cursor()
-            if params:
-                cursor.execute(sql, params)
-            else:
-                cursor.execute(sql)
-            rawData = cursor.fetchall()
-            col_names = [desc[0] for desc in cursor.description]
-            result = []
-            for row in rawData:
-                d = {}
-                for index, value in enumerate(row):
-                    d[col_names[index]] = value
-                result.append(d)
-            return result
+            try:
+                if params:
+                    cursor.execute(sql, params)
+                else:
+                    cursor.execute(sql)
+                rawData = cursor.fetchall()
+                col_names = [desc[0] for desc in cursor.description]
+                result = []
+                for row in rawData:
+                    d = {}
+                    for index, value in enumerate(row):
+                        d[col_names[index]] = value
+                    result.append(d)
+                return result
+            finally:
+                cursor.close()
 
         try:
             data = retry_db_operation(_execute)
         except Exception as e:
             self.logger.error("Database.select() error:%s,sql:%s" % (str(e), sql))
+            raise
 
         return data
 
@@ -61,11 +65,14 @@ class Database(object):
 
         def _execute():
             cursor = connection.cursor()
-            if params:
-                cursor.execute(sql, params)
-            else:
-                cursor.execute(sql)
-            return True
+            try:
+                if params:
+                    cursor.execute(sql, params)
+                else:
+                    cursor.execute(sql)
+                return True
+            finally:
+                cursor.close()
 
         try:
             ret = retry_db_operation(_execute)

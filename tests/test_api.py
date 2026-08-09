@@ -26,13 +26,13 @@ class TestStreamAPI:
 
     def test_openIndex_requires_auth(self):
         client = Client()
-        response = client.get("/openIndex")
+        response = client.get("/stream/openIndex")
         # Should redirect to login
         assert response.status_code in (302, 200)
 
     def test_api_openAdd_without_auth(self):
         client = Client()
-        response = client.post("/openAdd", {
+        response = client.post("/stream/openAdd", {
             "name": "test",
             "pull_stream_url": "rtsp://test",
             "pull_stream_type": "1",
@@ -47,6 +47,6 @@ class TestAlgorithmAPI:
 
     def test_list_algorithms(self):
         client = Client()
-        response = client.get("/algorithm/openList")
+        response = client.get("/algorithm/openIndex")
         # Should redirect to login or return JSON
         assert response.status_code in (200, 302)

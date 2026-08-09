@@ -57,26 +57,30 @@ def api_openDownload(request):
                 # 使用 FileResponse 流式传输，避免一次性读入大文件占内存
                 from django.http import FileResponse
                 f = open(filepath, mode="rb")
-                response = FileResponse(f, content_type="application/octet-stream")
-                # CORS headers removed - internal download endpoint should not be accessed cross-origin
-                response['Content-Disposition'] = "attachment;filename={};".format(escape_uri_path(filename))
+                try:
+                    response = FileResponse(f, content_type="application/octet-stream")
+                    # CORS headers removed - internal download endpoint should not be accessed cross-origin
+                    response['Content-Disposition'] = "attachment;filename={};".format(escape_uri_path(filename))
 
-                # 延迟删除：通过 after_response 钩子在响应发送完成后删除
-                # Django 的 FileResponse 会在响应完成后自动关闭文件句柄
-                # 使用 threading.Timer 延迟删除，确保文件已读取完毕
-                import threading
-                def __delayed_delete(path):
-                    try:
-                        time.sleep(5)  # 等待响应发送完成
-                        if os.path.exists(path):
-                            os.remove(path)
-                    except Exception as e:
-                        g_logger.error("StorageView.openDownload() delayed delete error,filepath=%s,e=%s" % (path, str(e)))
+                    # 延迟删除：通过 after_response 钩子在响应发送完成后删除
+                    # Django 的 FileResponse 会在响应完成后自动关闭文件句柄
+                    # 使用 threading.Timer 延迟删除，确保文件已读取完毕
+                    import threading
+                    def __delayed_delete(path):
+                        try:
+                            time.sleep(5)  # 等待响应发送完成
+                            if os.path.exists(path):
+                                os.remove(path)
+                        except Exception as e:
+                            g_logger.error("StorageView.openDownload() delayed delete error,filepath=%s,e=%s" % (path, str(e)))
 
-                t = threading.Thread(target=__delayed_delete, args=(filepath,))
-                t.start()
+                    t = threading.Thread(target=__delayed_delete, args=(filepath,))
+                    t.start()
 
-                return response
+                    return response
+                except Exception:
+                    f.close()
+                    raise
             else:
                 raise Exception("filepath not exists,filepath=%s" % filepath)
         else:

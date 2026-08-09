@@ -669,6 +669,8 @@ class AnalysisManager(object):
         return 3
 
     def _setup_signal_handlers(self):
+        if threading.current_thread() is not threading.main_thread():
+            return  # Cannot set signal handlers from non-main thread
         def handler(signum, frame):
             logger.info("收到信号 %d，开始优雅关闭...", signum)
             # Set shutdown event instead of calling shutdown() directly

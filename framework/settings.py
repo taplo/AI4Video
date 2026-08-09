@@ -28,6 +28,10 @@ PROJECT_ADMIN_START_TIMESTAMP = int(time.time()) # 软件启动时间戳（秒�
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
+# SECURITY WARNING: don't run with debug turned on in production!
+# DEBUG defaults to False; set DJANGO_DEBUG=true in .env to enable
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 if not SECRET_KEY:
@@ -46,10 +50,6 @@ if not SECRET_KEY:
             "DJANGO_SECRET_KEY environment variable is required in production. "
             "Set it in your .env file or environment."
         )
-
-# SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG defaults to False; set DJANGO_DEBUG=true in .env to enable
-DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # ALLOWED_HOSTS defaults to localhost; set comma-separated list in .env for production
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')

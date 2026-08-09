@@ -23,8 +23,12 @@ def f_parsePostParams(request):
     # 接收json方式上传的参数
     if not params:
         try:
-            params = request.body.decode('utf-8')
-            params = json.loads(params)
+            body = request.body.decode('utf-8')
+            parsed = json.loads(body)
+            if isinstance(parsed, dict):
+                params = parsed
+            else:
+                params = {}
         except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
             params = {}
 
@@ -108,7 +112,8 @@ def f_checkRequestSafe(request):
     else:
         headers = request.headers
         Safe = headers.get("Safe")
-        if Safe and hmac.compare_digest(str(Safe), str(g_config.safe)):
+        safe_secret = getattr(g_config, "safe", None)
+        if Safe and safe_secret and hmac.compare_digest(str(Safe), str(safe_secret)):
             ret = True
             msg = LANG_VIEWS_T(request, "msg_success")
         else:
