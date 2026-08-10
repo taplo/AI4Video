@@ -30,11 +30,24 @@ urlpatterns = [
 ]
 
 # OpenAPI Schema and Swagger UI (DEBUG mode only, per D-17)
-if settings.DEBUG:
-    from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-    urlpatterns += [
-        path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-        path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    ]
+# URLs are always registered but guarded at request time so they are not
+# exposed in production. Returning 404 keeps the runtime dependency on
+# drf_spectacular gated behind DEBUG.
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+
+def _debug_only(view):
+    """Return a view that 404s unless DEBUG is enabled."""
+    def inner(request, *args, **kwargs):
+        if not settings.DEBUG:
+            from django.http import Http404
+            raise Http404
+        return view(request, *args, **kwargs)
+    return inner
+
+urlpatterns += [
+    path('api/schema/', _debug_only(SpectacularAPIView.as_view()), name='schema'),
+    path('api/docs/', _debug_only(SpectacularSwaggerView.as_view(url_name='schema')), name='swagger-ui'),
+]
 
 urlpatterns += staticfiles_urlpatterns()

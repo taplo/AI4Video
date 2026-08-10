@@ -204,5 +204,19 @@ STATICFILES_FINDERS = [
     'compressor.finders.CompressorFinder',
 ]
 
+# Cache for django-ratelimit (D-09). This app runs as a single process
+# (manage.py runserver/runworker), so the thread-safe LocMemCache is shared
+# across all requests. Set RATELIMIT_USE_CACHE to a Redis/memcached backend
+# here if deploying behind multiple WSGI workers.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
+# LocMemCache is process-local; the ratelimit check warnings assume a
+# multi-process deployment, which this single-process app does not use.
+# Re-enable these checks if switching to a multi-worker WSGI server.
+SILENCED_SYSTEM_CHECKS = ['django_ratelimit.E003', 'django_ratelimit.W001']
+
 # Security
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'

@@ -18,8 +18,8 @@ AI4Video 是一个基于 Django 的视频分析平台，集成 ONNX/YOLO 推理�
 | 02 | onnx-fix | ✓ complete | — |
 | 03 | architecture-upgrade | ✓ complete | Phase 04 |
 | 04 | engineering-hardening | ✓ complete | Phase 01 |
-| 05 | test-infrastructure | ○ pending | Phase 03 |
-| 06 | other-upgrades | ○ pending | Phase 03 |
+| 05 | test-infrastructure | ✓ complete | Phase 03 |
+| 06 | other-upgrades | ✓ complete | Phase 03 |
 
 ---
 
@@ -109,7 +109,7 @@ AI4Video 是一个基于 Django 的视频分析平台，集成 ONNX/YOLO 推理�
 
 **Dependencies:** Phase 03 (架构升级完成后才能编写测试)
 
-**Status:** ○ pending
+**Status:** ✓ complete
 
 ---
 
@@ -136,11 +136,11 @@ AI4Video 是一个基于 Django 的视频分析平台，集成 ONNX/YOLO 推理�
 **Plans:** 3 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — 依赖升级、自动迁移、AuditLog 模型
-- [ ] 06-02-PLAN.md — 限流中间件、审计中间件、OpenAPI、静态压缩
-- [ ] 06-03-PLAN.md — 集成测试、全量回归验证
+- [x] 06-01-PLAN.md — 依赖升级、自动迁移、AuditLog 模型
+- [x] 06-02-PLAN.md — 限流中间件、审计中间件、OpenAPI、静态压缩
+- [x] 06-03-PLAN.md — 集成测试、全量回归验证
 
-**Status:** ○ pending
+**Status:** ✓ complete
 
 ---
 
@@ -152,8 +152,8 @@ Phase 01 (rename-cleanup) ─────┐
 Phase 02 (onnx-fix) ───────────┘                                                                        └─→ Phase 06 (other-upgrades)
 ```
 
-**建议：** Phase 01-04 已完成。接下来执行 Phase 05（测试体系建设），然后 Phase 06（依赖升级）。
+**建议：** Phase 01-06 全部完成。项目核心路线图已执行完毕。
 
 ---
 
-*Last updated: 2026-08-09*
+*Last updated: 2026-08-10*

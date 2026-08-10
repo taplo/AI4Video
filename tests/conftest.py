@@ -4,6 +4,10 @@ import os
 import pytest
 from unittest.mock import MagicMock
 
+# Ensure tests run in DEBUG mode so DEBUG-only features (e.g. the OpenAPI
+# schema served at /api/schema/) are exercised by default.
+os.environ.setdefault('DEBUG', 'true')
+
 
 @pytest.fixture(autouse=True)
 def _set_django_settings(monkeypatch):

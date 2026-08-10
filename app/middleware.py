@@ -19,6 +19,8 @@ AUTH_WHITELIST_PREFIXES = (
     '/user/openCaptcha',
     '/static/',
     '/api/health',
+    '/api/schema/',
+    '/api/docs/',
 )
 
 # 需 Safe 请求头鉴权的 open API（供 ZLM/内部服务调用，不暴露给浏览器）
@@ -79,8 +81,15 @@ class RateLimitMiddleware:
         else:
             ip = request.META.get('REMOTE_ADDR', '0.0.0.0')
 
-        # 检查限流
-        if is_ratelimited(request, group=None, key='ip', rate='200/m', method=ALL):
+        # 检查限流（D-05: 按IP维度限流）
+        if is_ratelimited(
+            request,
+            group='ratelimit:ip',
+            key='ip',
+            rate='200/m',
+            method=ALL,
+            increment=True,
+        ):
             return JsonResponse({
                 "code": 4290001,
                 "msg": "请求过于频繁，请稍后再试",
