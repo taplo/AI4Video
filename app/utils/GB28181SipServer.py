@@ -138,10 +138,19 @@ class Channel:
             "rtpTransferAudioType": server.rtp_transfer_audio_type  # 使用服务器配置
         }
 
-        # 发送POST请求
+# 发送POST请求
         headers = {
             "Content-Type": "application/json;"
         }
+
+        # /inner/ 回调查验 Safe 头（CR-01: 必须携带 config.json safe 密钥）
+        try:
+            from app.utils.GlobalUtils import g_config
+            _safe = getattr(g_config, "safe", None)
+            if _safe:
+                headers["Safe"] = str(_safe)
+        except Exception:
+            pass
 
         # 重试机制：admin服务启动可能晚于SIP服务，连接拒绝时重试
         max_retries = 3
