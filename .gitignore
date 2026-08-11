@@ -29,8 +29,7 @@ ai4video.spec
 static/storage/*
 framework/__pycache__/*
 app/__pycache__/*
-app/migrations/*
-app/migrations/__pycache__/*
+app/migrations/__pycache__/
 app/comms/__pycache__/*
 app/utils/__pycache__/*
 app/views/__pycache__/*

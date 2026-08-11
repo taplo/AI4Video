@@ -30,7 +30,7 @@ class StreamModel(BaseModel):
     pull_stream_ip = models.CharField(max_length=50, verbose_name='拉流IP')
     pull_stream_port = models.IntegerField(verbose_name='拉流端口')
     pull_stream_username = models.CharField(max_length=50, verbose_name='拉流用户名')
-    pull_stream_password = EncryptedCharField(max_length=50, verbose_name='拉流密码')
+    pull_stream_password = EncryptedCharField(max_length=255, verbose_name='拉流密码')
     nickname = models.CharField(max_length=200, verbose_name='视频流昵称')
     remark = models.CharField(max_length=200, verbose_name='备注')
     forward_state = models.IntegerField(verbose_name='转发状态')  # 0:未转发 1:转发中
@@ -60,7 +60,7 @@ class StreamModel(BaseModel):
     # 视频分析字段 end
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-    last_update_time = models.DateTimeField(auto_now_add=True, verbose_name='更新时间')
+    last_update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     add_type = models.IntegerField(default=0, verbose_name='添加类型')  # 0:手动添加 1:批量导入 10:接口添加 21:GB28181自动添加
     state = models.IntegerField(default=0, verbose_name='状态')
 
@@ -143,7 +143,7 @@ class AlgorithmModel(BaseModel):
     is_default = models.IntegerField(default=0, verbose_name='是否默认算法')  # 1=全局兜底
     state = models.IntegerField(default=1, verbose_name='状态')  # 0=禁用 1=启用
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-    last_update_time = models.DateTimeField(auto_now_add=True, verbose_name='更新时间')
+    last_update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     def __repr__(self):
         return self.name
@@ -211,7 +211,7 @@ class BizAlgorithmModel(BaseModel):
     reverse_count_threshold = models.IntegerField(default=0, verbose_name='逆向计数报警阈值')  # 0=不报警
     state = models.IntegerField(default=1, verbose_name='状态')  # 0=禁用 1=启用
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-    last_update_time = models.DateTimeField(auto_now_add=True, verbose_name='更新时间')
+    last_update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     def __repr__(self):
         return self.name
@@ -243,7 +243,7 @@ class ZoneModel(BaseModel):
     density_threshold = models.IntegerField(default=0, verbose_name='密度阈值')  # 0=不检测密度
     algorithms = models.ManyToManyField('BizAlgorithmModel', blank=True, related_name='zones', verbose_name='分析算法')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-    last_update_time = models.DateTimeField(auto_now_add=True, verbose_name='更新时间')
+    last_update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     state = models.IntegerField(default=1, verbose_name='状态')  # 1:启用 0:禁用
 
     def __repr__(self):
@@ -320,13 +320,13 @@ class LLMModel(BaseModel):
     name = models.CharField(max_length=50, default='', verbose_name='名称')
     model_name = models.CharField(max_length=200, verbose_name='模型名称')
     api_url = models.CharField(max_length=500, verbose_name='API地址')
-    api_key = EncryptedCharField(max_length=200, default='', verbose_name='API密钥')
+    api_key = EncryptedCharField(max_length=512, default='', verbose_name='API密钥')
     timeout = models.IntegerField(default=30, verbose_name='超时时间(秒)')
     inference_tool = models.CharField(max_length=100, default='OpenAI', verbose_name='推理工具')
     remark = models.TextField(default='', verbose_name='备注')
     state = models.IntegerField(default=1, verbose_name='状态')  # 0=禁用 1=启用
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-    last_update_time = models.DateTimeField(auto_now_add=True, verbose_name='更新时间')
+    last_update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     class Meta:
         db_table = 'av_llm'
