@@ -467,6 +467,9 @@ def login(request):
                             user.last_login = datetime.now()
                             user.save()
 
+                            # 防止会话固定攻击（WR-09）：登录成功后轮换 session key
+                            request.session.cycle_key()
+
                             # 无权限区分，所有登录用户均可访问所有功能
                             request.session[g_session_key_user] = {
                                 "id": user.id,

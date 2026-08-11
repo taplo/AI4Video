@@ -17,13 +17,11 @@ def main():
             "forget to activate a virtual environment?"
         ) from exc
 
-    # Auto-migrate on runserver/runworker (D-19, D-20)
+    # Auto-migrate on runserver/runworker (D-19, D-20).
+    # 迁移失败必须中止启动（WR-04），否则服务在 schema 不匹配的库上静默运行。
     if len(sys.argv) > 1 and sys.argv[1] in ('runserver', 'runworker'):
-        try:
-            from django.core.management import call_command
-            call_command('migrate', '--run-syncdb', verbosity=0)
-        except Exception as e:
-            print(f"Auto-migrate failed: {e}")
+        from django.core.management import call_command
+        call_command('migrate', '--run-syncdb', verbosity=1)  # 异常向上抛，中止启动
 
     execute_from_command_line(sys.argv)
 
