@@ -252,10 +252,20 @@ def algorithm_openIndex(request):
             qs = BizAlgorithmModel.objects.select_related('small_model', 'detector_model', 'llm').order_by('-id')
             state = request.GET.get('state', '').strip()
             if state != '':
-                qs = qs.filter(state=int(state))
+                try:
+                    state = int(state)
+                except (ValueError, TypeError):
+                    state = None
+                if state is not None:
+                    qs = qs.filter(state=state)
             flow = request.GET.get('flow_type', '').strip()
             if flow != '':
-                qs = qs.filter(flow_type=int(flow))
+                try:
+                    flow = int(flow)
+                except (ValueError, TypeError):
+                    flow = None
+                if flow is not None:
+                    qs = qs.filter(flow_type=flow)
             data = [_biz_to_dict(b) for b in qs]
             ret = True
             msg = LANG_VIEWS_T(request, "msg_success")
@@ -454,8 +464,9 @@ def _reload_affected_pipelines(biz):
         for sid in stream_ids:
             if mgr.is_running(sid):
                 mgr.reload_zones(sid)
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Failed to reload pipeline: %s", e)
 
 
 def algorithm_openAssignContext(request):

@@ -19,7 +19,7 @@ function Write-Pass($msg) {
 
 function Write-Fail($msg) {
     Write-Host "  FAIL: $msg" -ForegroundColor Red
-    $script:exCode = 1
+    $script:exitCode = 1
 }
 
 function Write-Skip($msg) {
