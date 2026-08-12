@@ -27,27 +27,30 @@ jobs:
       - name: Add uv to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
+      - name: Create virtual environment
+        run: uv venv
+
       - name: Install dependencies
         run: |
-          uv pip install --system -r requirements.txt
-          uv pip install --system -r requirements-dev.txt
+          uv pip install -r requirements.txt
+          uv pip install -r requirements-dev.txt
 
       - name: Check for missing migrations
         env:
           DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY || 'ci-test-secret-key' }}
           DEBUG: "true"
-        run: uv run --no-project python manage.py makemigrations --check --dry-run app
+        run: uv run python manage.py makemigrations --check --dry-run app
 
       - name: Lint with flake8
         run: |
-          flake8 app/ tests/ --max-line-length=120 --count --show-source --statistics || true
+          uv run flake8 app/ tests/ --max-line-length=120 --count --show-source --statistics || true
 
       - name: Run tests
         env:
           DJANGO_SECRET_KEY: ci-test-secret-key
           DEBUG: "true"
         run: |
-          uv run --no-project pytest tests/ -v --cov=app --cov-report=term-missing --cov-report=html --cov-fail-under=29
+          uv run pytest tests/ -v --cov=app --cov-report=term-missing --cov-report=html --cov-fail-under=29
 
       - name: Upload coverage report
         if: matrix.python-version == '3.11'
