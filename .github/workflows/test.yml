@@ -39,7 +39,7 @@ jobs:
         env:
           DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY || 'ci-test-secret-key' }}
           DEBUG: "true"
-        run: uv run python manage.py makemigrations --check --dry-run app
+        run: python manage.py makemigrations --check --dry-run app
 
       - name: Lint with flake8
         run: |
