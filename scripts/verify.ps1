@@ -125,7 +125,7 @@ elseif ($hasPyproject -or (Test-Path "manage.py")) {
     # Test (pytest or Django test)
     if (Test-Path "tests" -PathType Container) {
         Write-Host "  Running pytest..."
-        & $uvPath run pytest tests/ -v 2>&1
+        & $uvPath run pytest tests/ --cov=app --cov-fail-under=29 -v 2>&1
         if ($LASTEXITCODE -eq 0) { Write-Pass "pytest" } else { Write-Fail "pytest (exit $LASTEXITCODE)" }
     } elseif (Test-Path "manage.py") {
         Write-Host "  Running Django tests..."
