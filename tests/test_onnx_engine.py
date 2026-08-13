@@ -66,7 +66,8 @@ class TestOnnxEngineLoad:
         )
         # Patch os.path.exists to return True
         with patch('app.analysis.engines.onnx_engine.os.path.exists', return_value=True):
-            result = engine.load()
+            with patch.object(OnnxEngine, 'is_available', return_value=True):
+                result = engine.load()
         assert result is True
         assert engine._loaded is True
 
@@ -110,7 +111,8 @@ class TestOnnxEngineDetect:
             labels=["person"],
         )
         with patch('app.analysis.engines.onnx_engine.os.path.exists', return_value=True):
-            engine.load()
+            with patch.object(OnnxEngine, 'is_available', return_value=True):
+                engine.load()
 
         import numpy as np
         frame = np.zeros((640, 640, 3), dtype=np.uint8)
